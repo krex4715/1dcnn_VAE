@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     # VAE 모델 설정
     input_dim = 157  # Mel-Spectrogram의 time steps 크기
-    latent_dim = 16  # Latent space 차원
+    latent_dim = 8  # Latent space 차원
     vae = CNN_VAE(input_dim, latent_dim)
 
     # Optimizer 설정
@@ -108,11 +108,3 @@ if __name__ == "__main__":
     # 학습 후 역정규화를 위한 mean/std 값 가져오기
     mean_std_values = audio_dataset.get_mean_std_values()
     print("Mean/Std values for each file:", mean_std_values)
-
-    # # 복원 시 사용 예시
-    # # 예를 들어 첫 번째 데이터의 복원된 Mel-Spectrogram 역정규화
-    # first_mean, first_std = mean_std_values[0]
-    # # model의 출력이 정규화된 mel_spec일 경우
-    # reconstructed_mel_spec_normalized = torch.randn(1, 128, 157).numpy()  # 예시로 랜덤하게 넣음
-    # reconstructed_mel_spec = zscore_denormalize_mel_spectrogram(reconstructed_mel_spec_normalized, first_mean, first_std)
-    # print("Reconstructed Mel-Spectrogram (denormalized):", reconstructed_mel_spec.shape)

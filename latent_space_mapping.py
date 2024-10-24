@@ -4,6 +4,7 @@ import librosa
 import numpy as np
 import soundfile as sf
 import matplotlib.pyplot as plt
+import os
 
 # Function to load and normalize the Mel-Spectrogram (Z-score)
 def load_mel_spectrogram(file_path, sample_rate=16000, n_mels=128, n_fft=4096, hop_length=1024):
@@ -93,7 +94,7 @@ def decode_latent_to_audio(decoder, latent, mel_spec_mean, mel_spec_std, sample_
     # Griffin-Lim 알고리즘으로 오디오 복원
     audio = restore_audio_from_mel(reconstructed_mel_spec_power, sample_rate, n_fft, hop_length)
     
-    return audio
+    return audio , reconstructed_mel_spec_db
 
 
 def visualize_latent_space(mu_1, mu_2, interpolated_latents, num_steps):
@@ -116,6 +117,25 @@ def visualize_latent_space(mu_1, mu_2, interpolated_latents, num_steps):
     plt.legend()
     plt.grid(True)
     plt.show()
+
+
+
+
+
+# Mel-Spectrogram을 이미지로 저장하는 함수
+def save_mel_spectrogram_image(mel_spec_db, save_path):
+    plt.figure(figsize=(10, 4))
+    librosa.display.specshow(mel_spec_db, sr=16000, hop_length=1024, x_axis='time', y_axis='mel')
+    plt.colorbar(format='%+2.0f dB')
+    plt.title('Mel-Spectrogram (dB)')
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+
+
+
 
 
 
@@ -148,10 +168,12 @@ class CNN_VAE_decoder(torch.nn.Module):
 
 
 
+
+
 if __name__ == "__main__":
     # VAE 모델 설정
     input_dim = 157  # Mel-Spectrogram의 time steps 크기
-    latent_dim = 16  # Latent space 차원
+    latent_dim = 8  # Latent space 차원
     vae = CNN_VAE(input_dim, latent_dim)
     vae.load_state_dict(torch.load('vae_model.pth'))
 
@@ -172,17 +194,24 @@ if __name__ == "__main__":
     # mu 값만을 사용하여 보간
     interpolated_latents = interpolate_latent_space(mu_1, mu_2, num_steps=10)
 
+    # 시각화
+    visualize_latent_space(mu_1, mu_2, interpolated_latents, num_steps=10)
 
 
 
-
+    base_dir = './results/'
+    os.makedirs(base_dir, exist_ok=True)
     
 
     # 보간된 잠재공간 값들을 디코더를 통해 오디오로 변환
     for i, latent in enumerate(interpolated_latents):
         # 각 보간된 잠재공간을 사용하여 Mel-Spectrogram 복원 및 오디오 변환
-        audio = decode_latent_to_audio(vae_decoder, latent, mel_mean_1, mel_std_1)  # mel_mean_1과 mel_std_1 사용
+        audio, reconstructed_mel_spec_db = decode_latent_to_audio(vae_decoder, latent, mel_mean_1, mel_std_1)  # mel_mean_1과 mel_std_1 사용
+
+        # 복원된 Mel-Spectrogram을 이미지로 저장
+        save_mel_spectrogram_image(reconstructed_mel_spec_db, f'{base_dir}interpolated_mel_{i}.png')
+        print(f"Mel-Spectrogram 이미지 저장 ::: 'interpolated_mel_{i}.png'")
 
         # 변환된 오디오를 파일로 저장
-        sf.write(f'interpolated_audio_{i}.wav', audio, 16000)
+        sf.write(f'{base_dir}interpolated_audio_{i}.wav', audio, 16000)
         print(f"오디오 복원 ::: 'interpolated_audio_{i}.wav'")
